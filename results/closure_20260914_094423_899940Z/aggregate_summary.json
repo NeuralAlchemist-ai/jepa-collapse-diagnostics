@@ -1,0 +1,119 @@
+{
+  "seeds": [
+    42,
+    100,
+    2026,
+    3141,
+    404
+  ],
+  "config": {
+    "epochs": 3,
+    "probe_epochs": 2,
+    "batch_size": 128,
+    "max_train_samples": 10000,
+    "max_test_samples": 2000,
+    "primary_metric": "effective_rank"
+  },
+  "model_metrics": {
+    "autoencoder": {
+      "linear_probe_accuracy": {
+        "mean": 0.6413,
+        "std": 0.008035
+      },
+      "feature_variance": {
+        "mean": 0.443711,
+        "std": 0.017144
+      },
+      "effective_rank": {
+        "mean": 23.23496,
+        "std": 0.93781
+      },
+      "avg_pairwise_cosine_sim": {
+        "mean": 0.831612,
+        "std": 0.014265
+      }
+    },
+    "jepa": {
+      "linear_probe_accuracy": {
+        "mean": 0.3867,
+        "std": 0.036774
+      },
+      "feature_variance": {
+        "mean": 0.069854,
+        "std": 0.02003
+      },
+      "effective_rank": {
+        "mean": 26.001224,
+        "std": 0.867318
+      },
+      "avg_pairwise_cosine_sim": {
+        "mean": 0.978499,
+        "std": 0.004315
+      }
+    },
+    "collapsed_control": {
+      "linear_probe_accuracy": {
+        "mean": 0.1094,
+        "std": 0.011434
+      },
+      "feature_variance": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "effective_rank": {
+        "mean": 0.0,
+        "std": 0.0
+      },
+      "avg_pairwise_cosine_sim": {
+        "mean": 1.0,
+        "std": 0.0
+      }
+    }
+  },
+  "paired_jepa_minus_autoencoder": {
+    "linear_probe_accuracy": {
+      "deltas": [
+        -0.2635,
+        -0.2565,
+        -0.1845,
+        -0.2585,
+        -0.31
+      ],
+      "mean": -0.2546,
+      "std": 0.040202
+    },
+    "feature_variance": {
+      "deltas": [
+        -0.360739,
+        -0.39236,
+        -0.411712,
+        -0.335802,
+        -0.368673
+      ],
+      "mean": -0.373857,
+      "std": 0.026163
+    },
+    "effective_rank": {
+      "deltas": [
+        2.593475,
+        2.109877,
+        2.926948,
+        3.571865,
+        2.629154
+      ],
+      "mean": 2.766264,
+      "std": 0.480481
+    },
+    "avg_pairwise_cosine_sim": {
+      "deltas": [
+        0.164473,
+        0.116414,
+        0.152895,
+        0.15255,
+        0.148102
+      ],
+      "mean": 0.146887,
+      "std": 0.016171
+    }
+  }
+}

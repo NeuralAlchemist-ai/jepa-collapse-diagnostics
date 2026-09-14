@@ -4,11 +4,11 @@
   "primary_metric": "effective_rank",
   "config": {
     "seed": 42,
-    "epochs": 1,
-    "probe_epochs": 1,
+    "epochs": 3,
+    "probe_epochs": 2,
     "batch_size": 128,
-    "max_train_samples": 128,
-    "max_test_samples": 64,
+    "max_train_samples": 10000,
+    "max_test_samples": 2000,
     "deterministic_algorithms": true
   },
   "parameter_counts": {
@@ -17,19 +17,19 @@
     "jepa_total": 187592
   },
   "autoencoder": {
-    "linear_probe_accuracy": 0.1094,
-    "feature_variance": 0.009924,
-    "effective_rank": 35.633488,
-    "avg_pairwise_cosine_sim": 0.786532
+    "linear_probe_accuracy": 0.6325,
+    "feature_variance": 0.433825,
+    "effective_rank": 24.194712,
+    "avg_pairwise_cosine_sim": 0.818589
   },
   "jepa": {
-    "linear_probe_accuracy": 0.0781,
-    "feature_variance": 0.010192,
-    "effective_rank": 37.732185,
-    "avg_pairwise_cosine_sim": 0.835114
+    "linear_probe_accuracy": 0.369,
+    "feature_variance": 0.073086,
+    "effective_rank": 26.788187,
+    "avg_pairwise_cosine_sim": 0.983062
   },
   "collapsed_control": {
-    "linear_probe_accuracy": 0.1562,
+    "linear_probe_accuracy": 0.1085,
     "feature_variance": 0.0,
     "effective_rank": 0.0,
     "avg_pairwise_cosine_sim": 1.0

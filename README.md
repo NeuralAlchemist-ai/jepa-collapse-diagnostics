@@ -17,38 +17,29 @@ accuracy.
 
 ## Setup
 
-```bash
+## Run
 python -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements.txt
+python run_experiment.py
 ```
-
-Or, with `uv`:
-
-```bash
-uv sync
-```
-
-The first run downloads MNIST into `data/` through torchvision.
 
 ## Run
 
 ```bash
-python run_experiment.py --epochs 3 --probe-epochs 2
+python run_experiment.py
 ```
 
-With `uv`, use `uv run` instead:
+With `uv`:
 
 ```bash
-uv run python run_experiment.py --epochs 3 --probe-epochs 2
+uv run python run_experiment.py
 ```
 
-For a quick smoke run:
-
-```bash
-python run_experiment.py --epochs 1 --probe-epochs 1 --max-train-samples 2048 --max-test-samples 1024
-```
-
-Results are written as JSON to a UTC timestamped directory with microseconds in
-`results/`; an additional suffix prevents collisions. Each report records the
+The default closure run freezes seeds `42`, `100`, `2026`, `3141`, and `404`.
+It uses 3 training epochs, 2 probe epochs, and fixed 10,000/2,000 train/test
+budgets. Results are written to a UTC timestamped directory in `results/` with
+one JSON report per seed plus `aggregate_summary.json`. Each report records the
 seed, deterministic settings, run configuration, and parameter counts.
+
+The interpretation of the retained closure artifact is recorded in
+`RESULT_NOTE.md`.

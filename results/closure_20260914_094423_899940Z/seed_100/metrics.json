@@ -1,0 +1,37 @@
+{
+  "seed": 100,
+  "device": "cuda",
+  "primary_metric": "effective_rank",
+  "config": {
+    "seed": 100,
+    "epochs": 3,
+    "probe_epochs": 2,
+    "batch_size": 128,
+    "max_train_samples": 10000,
+    "max_test_samples": 2000,
+    "deterministic_algorithms": true
+  },
+  "parameter_counts": {
+    "autoencoder_trainable": 98254,
+    "jepa_trainable": 97956,
+    "jepa_total": 187592
+  },
+  "autoencoder": {
+    "linear_probe_accuracy": 0.6425,
+    "feature_variance": 0.471148,
+    "effective_rank": 23.982046,
+    "avg_pairwise_cosine_sim": 0.857588
+  },
+  "jepa": {
+    "linear_probe_accuracy": 0.386,
+    "feature_variance": 0.078788,
+    "effective_rank": 26.091923,
+    "avg_pairwise_cosine_sim": 0.974002
+  },
+  "collapsed_control": {
+    "linear_probe_accuracy": 0.0875,
+    "feature_variance": 0.0,
+    "effective_rank": 0.0,
+    "avg_pairwise_cosine_sim": 1.0
+  }
+}
