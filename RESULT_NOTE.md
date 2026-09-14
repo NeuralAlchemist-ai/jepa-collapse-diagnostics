@@ -19,19 +19,25 @@ primary metric is centered effective rank.
 
 ## Closure result
 
-The bounded closure run used seeds 42, 43, and 44, three training epochs, two
-probe epochs, and fixed budgets of 2,048 training and 1,024 test examples. The
-per-seed reports and aggregate summary are retained under
-`results/closure_20260914_083005_266639Z/`.
+The closure run used seeds `42`, `100`, `2026`, `3141`, and `404`, three
+training epochs, two probe epochs, and fixed budgets of 10,000 training and
+2,000 test examples. The per-seed reports and aggregate summary are retained
+under `results/closure_20260914_094423_899940Z/`.
 
-This is a mixed result. JEPA had higher centered effective rank for all three
-seeds, with a paired mean difference of `+12.312186` (standard deviation
-`0.362480`). Its representation variance was lower by `-0.062393` on average,
-and its average pairwise cosine similarity was higher by `+0.036617`.
-However, the linear-probe accuracy difference was `-0.063833` on average, with
-JEPA below the autoencoder on two of three seeds. The primary metric therefore
-supports the representation-diversity part of the hypothesis, while probe
-accuracy does not support a broad claim of better semantic representations in
-this small trial. The collapsed control remained at zero variance and
-effective rank with cosine similarity 1.0, confirming that the diagnostics
-detect the deliberately failed representation.
+Primary metric: centered effective rank.
+
+Secondary diagnostics: linear-probe accuracy, feature variance, and average
+pairwise cosine similarity.
+
+Aggregate mean +/- standard deviation:
+
+- Autoencoder: rank `23.234960 +/- 0.937810`, accuracy `0.641300 +/- 0.008035`.
+- JEPA: rank `26.001224 +/- 0.867318`, accuracy `0.386700 +/- 0.036774`.
+- JEPA minus autoencoder: rank `+2.766264`, accuracy `-0.254600`.
+
+The result is mixed. JEPA had higher effective rank on average, but lower probe
+accuracy and lower feature variance, with higher cosine similarity. The primary
+metric supports greater rank under this setup, while probe accuracy does not
+support the broader claim that JEPA learned better semantic representations.
+The collapsed control remained at zero variance and effective rank with cosine
+similarity 1.0, confirming that the diagnostics detect the deliberate failure.

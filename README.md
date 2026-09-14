@@ -17,11 +17,19 @@ accuracy.
 
 ## Setup
 
-## Run
+```bash
 python -m venv .venv
 source .venv/bin/activate
-python run_experiment.py
+python -m pip install -r requirements.txt
 ```
+
+Or, with `uv`:
+
+```bash
+uv sync
+```
+
+The first run downloads MNIST into `data/` through torchvision.
 
 ## Run
 
