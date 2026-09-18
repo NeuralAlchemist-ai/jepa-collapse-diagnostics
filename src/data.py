@@ -3,7 +3,7 @@ import random
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 from torchvision.transforms import InterpolationMode
 from torchvision.transforms import functional as TF
@@ -14,6 +14,7 @@ PROTOCOL_SHIFT_SEED = 12345
 PROTOCOL_TRAIN_SAMPLES = 10_000
 PROTOCOL_TEST_SAMPLES = 2_000
 PROTOCOL_SEEDS = (42, 100, 2026, 3141, 404)
+NORMALIZE = transforms.Normalize((0.5,), (0.5,))
 
 
 def _repo_root() -> Path:
@@ -100,7 +101,20 @@ class DeterministicTranslationDataset(torch.utils.data.Dataset):
 		image, label = self.base_dataset[index]
 		dx, dy = self.offsets[index]
 		shifted = apply_translation(image.unsqueeze(0), dx, dy, fill_value=self.fill_value).squeeze(0)
-		return shifted, label
+		return NORMALIZE(shifted), label
+
+
+class NormalizedDataset(Dataset):
+	def __init__(self, base_dataset: Dataset) -> None:
+		super().__init__()
+		self.base_dataset = base_dataset
+
+	def __len__(self) -> int:
+		return len(self.base_dataset)
+
+	def __getitem__(self, index: int):
+		image, label = self.base_dataset[index]
+		return NORMALIZE(image), label
 
 
 def get_mnist_loaders(
@@ -114,10 +128,7 @@ def get_mnist_loaders(
 	matched_training_augmentation: bool = False,
 	translation_seed: int = PROTOCOL_SHIFT_SEED,
 ) -> tuple[DataLoader, DataLoader]:
-	transform = transforms.Compose([
-		transforms.ToTensor(),
-		transforms.Normalize((0.5,), (0.5,)),
-	])
+	transform = transforms.ToTensor()
 	train_dataset = datasets.MNIST(_resolve_data_root(root), train=True, download=True, transform=transform)
 	test_dataset = datasets.MNIST(_resolve_data_root(root), train=False, download=True, transform=transform)
 	if use_fixed_indices:
@@ -129,9 +140,11 @@ def get_mnist_loaders(
 		train_dataset = Subset(train_dataset, range(min(max_train_samples, len(train_dataset))))
 	elif max_test_samples is not None:
 		test_dataset = Subset(test_dataset, range(min(max_test_samples, len(test_dataset))))
+	train_dataset = NormalizedDataset(train_dataset)
+	test_dataset = NormalizedDataset(test_dataset)
 	if matched_training_augmentation:
 		train_offsets = generate_translation_offsets(len(train_dataset), seed=translation_seed + seed, bounds=PROTOCOL_SHIFT_BOUNDS)
-		train_dataset = DeterministicTranslationDataset(train_dataset, offsets=train_offsets, seed=translation_seed + seed)
+		train_dataset = DeterministicTranslationDataset(train_dataset.base_dataset, offsets=train_offsets, seed=translation_seed + seed)
 	generator = torch.Generator()
 	generator.manual_seed(seed)
 	return (
@@ -153,15 +166,12 @@ def get_standard_test_loader(
 	num_workers: int = 0,
 	use_fixed_indices: bool = True,
 ) -> DataLoader:
-	transform = transforms.Compose([
-		transforms.ToTensor(),
-		transforms.Normalize((0.5,), (0.5,)),
-	])
+	transform = transforms.ToTensor()
 	dataset = datasets.MNIST(_resolve_data_root(root), train=False, download=True, transform=transform)
 	indices = _load_split_indices("test", root)
 	if max_test_samples is not None:
 		indices = indices[:max_test_samples]
-	return DataLoader(Subset(dataset, indices), batch_size=batch_size, shuffle=False, num_workers=num_workers)
+	return DataLoader(NormalizedDataset(Subset(dataset, indices)), batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
 
 def get_shifted_test_loader(
@@ -171,17 +181,18 @@ def get_shifted_test_loader(
 	num_workers: int = 0,
 	shift_seed: int = PROTOCOL_SHIFT_SEED,
 	use_fixed_indices: bool = True,
+	offsets: list[tuple[int, int]] | None = None,
 ) -> DataLoader:
-	transform = transforms.Compose([
-		transforms.ToTensor(),
-		transforms.Normalize((0.5,), (0.5,)),
-	])
+	transform = transforms.ToTensor()
 	dataset = datasets.MNIST(_resolve_data_root(root), train=False, download=True, transform=transform)
 	indices = _load_split_indices("test", root)
 	if max_test_samples is not None:
 		indices = indices[:max_test_samples]
 	base_subset = Subset(dataset, indices)
-	offsets = generate_translation_offsets(len(base_subset), seed=shift_seed, bounds=PROTOCOL_SHIFT_BOUNDS)
+	if offsets is None:
+		offsets = generate_translation_offsets(len(base_subset), seed=shift_seed, bounds=PROTOCOL_SHIFT_BOUNDS)
+	if len(offsets) != len(base_subset):
+		raise ValueError("translation offset count must match the test subset")
 	shifted_dataset = DeterministicTranslationDataset(base_subset, offsets=offsets, seed=shift_seed)
 	return DataLoader(shifted_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 

@@ -1,14 +1,17 @@
 import argparse
+import hashlib
 import json
+import math
 import random
+import statistics
 from datetime import datetime, timezone
 from pathlib import Path
 
 import torch
 from torch import nn
 
-from src.data import PROTOCOL_SEEDS, PROTOCOL_SHIFT_BOUNDS, PROTOCOL_SHIFT_SEED, PROTOCOL_TEST_SAMPLES, PROTOCOL_TRAIN_SAMPLES, get_mnist_loaders, split_context_target
-from src.evaluate import evaluate_linear_probe
+from src.data import PROTOCOL_SEEDS, PROTOCOL_SHIFT_BOUNDS, PROTOCOL_SHIFT_SEED, PROTOCOL_TEST_SAMPLES, PROTOCOL_TRAIN_SAMPLES, generate_translation_offsets, get_mnist_loaders, get_shifted_test_loader, get_standard_test_loader, split_context_target
+from src.evaluate import evaluate_linear_probe, evaluate_linear_probe_on_loaders
 from src.models import AutoEncoder, CollapsedControl, JEPA
 
 
@@ -30,6 +33,16 @@ def load_distribution_shift_protocol() -> dict:
 	protocol_path = Path(__file__).resolve().parent / "protocols" / "distribution_shift_v1.json"
 	with protocol_path.open("r", encoding="utf-8") as file:
 		return json.load(file)
+
+
+def set_deterministic_seed(seed: int) -> None:
+	random.seed(seed)
+	torch.manual_seed(seed)
+	if torch.cuda.is_available():
+		torch.cuda.manual_seed_all(seed)
+	torch.backends.cudnn.benchmark = False
+	torch.backends.cudnn.deterministic = True
+	torch.use_deterministic_algorithms(True)
 
 
 def train_autoencoder(model, loader, device, epochs, learning_rate):
@@ -76,13 +89,7 @@ def parameter_count(model, trainable_only=False):
 
 
 def run_seed(seed: int, output_dir: Path) -> dict:
-	random.seed(seed)
-	torch.manual_seed(seed)
-	if torch.cuda.is_available():
-		torch.cuda.manual_seed_all(seed)
-	torch.backends.cudnn.benchmark = False
-	torch.backends.cudnn.deterministic = True
-	torch.use_deterministic_algorithms(True)
+	set_deterministic_seed(seed)
 	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 	print(f"Using device: {device} for seed {seed}")
 	train_loader, test_loader = get_mnist_loaders(
@@ -135,6 +142,155 @@ def run_seed(seed: int, output_dir: Path) -> dict:
 	return report
 
 
+def run_distribution_shift_seed(
+	seed: int,
+	output_dir: Path,
+	matched_training_augmentation: bool = False,
+	protocol: dict | None = None,
+) -> dict:
+	protocol = protocol or load_distribution_shift_protocol()
+	set_deterministic_seed(seed)
+	device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+	training = protocol["training"]
+	probe_config = protocol["linear_probe"]
+	train_kwargs = {
+		"batch_size": training["batch_size"],
+		"max_train_samples": protocol["dataset"]["train_samples"],
+		"max_test_samples": protocol["dataset"]["test_samples"],
+		"seed": seed,
+		"matched_training_augmentation": matched_training_augmentation,
+		"translation_seed": protocol["training_augmentation"]["translation_seed"],
+	}
+	offsets = generate_translation_offsets(
+		protocol["dataset"]["test_samples"],
+		seed=protocol["shift"]["translation_seed"],
+		bounds=tuple(protocol["shift"]["dx_range"]),
+	)
+	standard_test_loader = get_standard_test_loader(
+		batch_size=training["batch_size"],
+		max_test_samples=protocol["dataset"]["test_samples"],
+	)
+	shifted_test_loader = get_shifted_test_loader(
+		batch_size=training["batch_size"],
+		max_test_samples=protocol["dataset"]["test_samples"],
+		shift_seed=protocol["shift"]["translation_seed"],
+		offsets=offsets,
+	)
+
+	def evaluate_model(model: nn.Module, model_name: str, use_context: bool = False, is_jepa: bool = False) -> dict:
+		set_deterministic_seed(seed)
+		model = model.to(device)
+		model_train_loader, _ = get_mnist_loaders(**train_kwargs)
+		if model_name == "autoencoder":
+			train_autoencoder(model, model_train_loader, device, training["epochs"], training["learning_rate"])
+		else:
+			train_jepa(model, model_train_loader, device, training["epochs"], training["learning_rate"])
+		probe_train_loader, _ = get_mnist_loaders(**train_kwargs)
+		probe_results = evaluate_linear_probe_on_loaders(
+			encoder=model,
+			train_loader=probe_train_loader,
+			evaluation_loaders={"standard": standard_test_loader, "shifted": shifted_test_loader},
+			latent_dim=protocol["linear_probe"]["latent_dim"],
+			is_jepa=is_jepa,
+			use_context=use_context,
+			device=device,
+			epochs=probe_config["epochs"],
+			learning_rate=probe_config["learning_rate"],
+			weight_decay=probe_config["weight_decay"],
+		)
+		standard = probe_results["standard"]
+		shifted = probe_results["shifted"]
+		return {
+			"model": model_name,
+			"parameter_count": parameter_count(model, trainable_only=True),
+			"standard_accuracy": standard["accuracy"],
+			"shifted_accuracy": shifted["accuracy"],
+			"accuracy_drop": round(standard["accuracy"] - shifted["accuracy"], 6),
+			"standard_diagnostics": standard["diagnostics"],
+			"shifted_diagnostics": shifted["diagnostics"],
+		}
+
+	autoencoder_report = evaluate_model(AutoEncoder(), "autoencoder", use_context=True)
+	jepa_report = evaluate_model(JEPA(), "jepa", is_jepa=True)
+	report = {
+		"seed": seed,
+		"protocol": protocol["protocol_id"],
+		"protocol_sha256": protocol_sha256(),
+		"device": str(device),
+		"training_condition": "matched_translation_augmentation" if matched_training_augmentation else "standard_unshifted",
+		"training_config": training,
+		"probe_config": probe_config,
+		"shift_config": protocol["shift"],
+		"autoencoder": autoencoder_report,
+		"jepa": jepa_report,
+		"D_seed": round(autoencoder_report["accuracy_drop"] - jepa_report["accuracy_drop"], 6),
+	}
+	output_dir.mkdir(parents=True, exist_ok=True)
+	(output_dir / "metrics.json").write_text(json.dumps(report, indent=2) + "\n")
+	return report
+
+
+def protocol_sha256() -> str:
+	protocol_path = Path(__file__).resolve().parent / "protocols" / "distribution_shift_v1.json"
+	return hashlib.sha256(protocol_path.read_bytes()).hexdigest()
+
+
+def run_distribution_shift(output_dir: Path, matched_training_augmentation: bool = False) -> dict:
+	protocol = load_distribution_shift_protocol()
+	output_dir.mkdir(parents=True, exist_ok=False)
+	offsets = generate_translation_offsets(
+		protocol["dataset"]["test_samples"],
+		seed=protocol["shift"]["translation_seed"],
+		bounds=tuple(protocol["shift"]["dx_range"]),
+	)
+	(output_dir / "translation_offsets.json").write_text(json.dumps(offsets, indent=2) + "\n")
+	reports = [
+		run_distribution_shift_seed(
+			seed,
+			output_dir / f"seed_{seed}",
+			matched_training_augmentation=matched_training_augmentation,
+			protocol=protocol,
+		)
+		for seed in protocol["seeds"]
+	]
+	differences = [report["D_seed"] for report in reports]
+	mean_difference = statistics.mean(differences)
+	std_difference = statistics.stdev(differences)
+	margin = protocol["analysis"]["t_critical_df_4"] * std_difference / math.sqrt(len(differences))
+	paired_summary = {
+		"D_seed": [{"seed": report["seed"], "value": report["D_seed"]} for report in reports],
+		"mean": round(mean_difference, 6),
+		"std": round(std_difference, 6),
+		"confidence_level": protocol["analysis"]["confidence_level"],
+		"ci_method": protocol["analysis"]["ci_method"],
+		"ci": [round(mean_difference - margin, 6), round(mean_difference + margin, 6)],
+		"decision_rule": protocol["decision_rule"],
+	}
+	aggregate = {
+		"protocol": protocol["protocol_id"],
+		"protocol_sha256": protocol_sha256(),
+		"reproduction_command": protocol["reproduction_command"],
+		"training_condition": "matched_translation_augmentation" if matched_training_augmentation else "standard_unshifted",
+		"seeds": protocol["seeds"],
+		"models": {
+			model_name: {
+				"standard_accuracy_mean": round(statistics.mean(report[model_name]["standard_accuracy"] for report in reports), 6),
+				"standard_accuracy_std": round(statistics.stdev(report[model_name]["standard_accuracy"] for report in reports), 6),
+				"shifted_accuracy_mean": round(statistics.mean(report[model_name]["shifted_accuracy"] for report in reports), 6),
+				"shifted_accuracy_std": round(statistics.stdev(report[model_name]["shifted_accuracy"] for report in reports), 6),
+				"accuracy_drop_mean": round(statistics.mean(report[model_name]["accuracy_drop"] for report in reports), 6),
+				"accuracy_drop_std": round(statistics.stdev(report[model_name]["accuracy_drop"] for report in reports), 6),
+			}
+			for model_name in ("autoencoder", "jepa")
+		},
+		"D_seed_mean": round(mean_difference, 6),
+		"D_seed_std": round(std_difference, 6),
+	}
+	(output_dir / "aggregate.json").write_text(json.dumps(aggregate, indent=2) + "\n")
+	(output_dir / "paired_summary.json").write_text(json.dumps(paired_summary, indent=2) + "\n")
+	return aggregate
+
+
 def summarize(reports: list[dict]) -> dict:
 	model_metrics = {}
 	for model_name in ("autoencoder", "jepa", "collapsed_control"):
@@ -165,13 +321,15 @@ def main() -> None:
 		"--protocol",
 		choices=("closure", "distribution_shift_v1"),
 		default="closure",
-		help="Which experiment protocol to configure. The distribution-shift protocol is frozen but intentionally not executed here.",
+		help="Which experiment protocol to execute.",
 	)
+	parser.add_argument("--output-dir", type=Path)
+	parser.add_argument("--matched-training-augmentation", action="store_true")
 	args = parser.parse_args()
 	if args.protocol == "distribution_shift_v1":
-		protocol = load_distribution_shift_protocol()
-		print(json.dumps(protocol, indent=2))
-		print("Distribution-shift protocol is frozen and intentionally not executed in this repository state.")
+		output_dir = args.output_dir or Path("results") / f"distribution_shift_v1_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S_%fZ')}"
+		aggregate = run_distribution_shift(output_dir, matched_training_augmentation=args.matched_training_augmentation)
+		print(json.dumps(aggregate, indent=2))
 		return
 	base_name = datetime.now(timezone.utc).strftime("closure_%Y%m%d_%H%M%S_%fZ")
 	closure_dir = Path("results") / base_name

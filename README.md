@@ -40,12 +40,16 @@ results are associated with the earlier closure run and are kept in
 ## Distribution-shift protocol v1
 
 A new protocol, `distribution_shift_v1`, is prepared for review. It is a
-pre-outcome evaluation protocol for a controlled MNIST translation-shift study,
-using the same five seeds and the same 10,000/2,000 train/test budgets as the
-closure experiment while keeping the model architectures unchanged.
+pre-outcome evaluation protocol awaiting reviewer approval for a controlled
+MNIST translation-shift study, using the same five seeds and the same
+10,000/2,000 train/test budgets as the closure experiment while keeping the
+model architectures unchanged.
 
-This protocol has not been executed yet and is not generating experimental
-results in the repository state.
+The implementation is prepared, but no result-bearing distribution-shift run
+has been executed. The committed split manifests are
+`data/splits/train_indices.json` and `data/splits/test_indices.json`; they are
+fixed subsets containing the first 10,000 training indices and first 2,000 test
+indices.
 
 ## Run
 
@@ -59,7 +63,7 @@ With `uv`:
 uv run python run_experiment.py
 ```
 
-To inspect the frozen distribution-shift metadata without executing the protocol:
+To execute the distribution-shift protocol after approval:
 
 ```bash
 python run_experiment.py --protocol distribution_shift_v1

@@ -51,12 +51,15 @@ Fixed dataset budget:
 * Training examples: **10,000**
 * Test examples: **2,000**
 
-The exact training and test indices must be generated once and committed to:
+The committed manifests are:
 
 ```text
-splits/train_indices.json
-splits/test_indices.json
+data/splits/train_indices.json
+data/splits/test_indices.json
 ```
+
+They contain the first 10,000 MNIST training indices and first 2,000 MNIST test
+indices. This is a deterministic fixed subset, not a newly randomized split.
 
 Both models use exactly the same training indices.
 
@@ -82,7 +85,7 @@ Frozen transformation:
 * horizontal displacement: integer value in `[-2, +2]` pixels
 * vertical displacement: integer value in `[-2, +2]` pixels
 * interpolation: bilinear
-* fill value: `0`
+* fill value: raw-space `0.0` (black)
 * transformation generation: deterministic
 * transformation seed: `12345`
 
@@ -135,7 +138,9 @@ In this condition:
 * The same transformation bounds and generation procedure are used for both models.
 * Training sample budget, epochs, batch size, optimizer, learning rate, and seeds remain unchanged.
 
-The augmentation policy is frozen before any result-bearing run.
+The augmentation policy is frozen before any result-bearing run. The training
+translation seed is exactly `12345 + model_seed`; this does not alter the test
+shift, whose seed remains `12345`.
 
 The primary conclusion must distinguish robustness observed without augmentation from robustness observed after matched augmentation.
 
@@ -154,7 +159,9 @@ Probe configuration:
 * weight decay: 0
 * scheduler: None
 
-The probe is trained using the standard training representation.
+The probe is trained only using standard/unshifted training representations.
+The same trained probe is then evaluated on both standard and shifted test
+representations.
 
 For each model and seed, the same trained probe is evaluated separately on:
 
@@ -188,6 +195,9 @@ The final analysis reports:
 * mean `D_seed`
 * standard deviation of `D_seed`
 * 95% paired confidence interval for `D_seed`
+
+The confidence interval is a paired t-based 95% interval over the five
+`D_seed` values, with the method frozen before execution.
 
 The five seeds are treated as paired observations because JEPA and the autoencoder use the same seed and data split.
 

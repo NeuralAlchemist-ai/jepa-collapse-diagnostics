@@ -1,42 +1,86 @@
 {
-  "experiment": "controlled_distribution_shift",
-  "dataset": "MNIST",
-  "train_indices": "splits/train_indices.json",
-  "test_indices": "splits/test_indices.json",
-  "train_size": 10000,
-  "test_size": 2000,
-
-  "shift": {
-    "type": "translation",
-    "x_pixels": [-2, 2],
-    "y_pixels": [-2, 2],
-    "interpolation": "bilinear",
-    "fill": 0,
-    "shift_seed": 12345
+  "protocol_id": "distribution_shift_v1",
+  "status": "pre_outcome_awaiting_review",
+  "reproduction_command": "python run_experiment.py --protocol distribution_shift_v1",
+  "dataset": {
+    "name": "MNIST",
+    "train_samples": 10000,
+    "test_samples": 2000,
+    "train_manifest": "data/splits/train_indices.json",
+    "test_manifest": "data/splits/test_indices.json",
+    "manifest_policy": "committed manifests containing the first 10000 MNIST training indices and first 2000 MNIST test indices; fixed subsets, not newly randomized splits",
+    "preprocessing": "ToTensor, translation in raw [0, 1] space, then Normalize((0.5,), (0.5,))"
   },
-
   "seeds": [42, 100, 2026, 3141, 404],
-
+  "shift": {
+    "type": "bounded_translation",
+    "dx_range": [-2, 2],
+    "dy_range": [-2, 2],
+    "offset_type": "independent integer draws",
+    "interpolation": "bilinear",
+    "fill": 0.0,
+    "fill_space": "raw [0, 1] image space",
+    "translation_seed": 12345
+  },
   "training": {
     "epochs": 3,
     "batch_size": 128,
-    "learning_rate": 0.001
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "scheduler": "none",
+    "augmentation": "none for primary condition"
   },
-
-  "probe": {
+  "training_augmentation": {
+    "policy": "same bounded translation policy for AE and JEPA",
+    "translation_seed": 12345,
+    "seed_rule": "train_translation_seed = 12345 + model_seed",
+    "test_shift_unchanged": true
+  },
+  "jepa": {
+    "input_dim": 392,
+    "latent_dim": 64,
+    "ema_beta": 0.99,
+    "target_encoder_trainable": false
+  },
+  "autoencoder": {
+    "input_dim": 392,
+    "latent_dim": 64
+  },
+  "linear_probe": {
+    "latent_dim": 64,
+    "output_classes": 10,
     "epochs": 2,
-    "learning_rate": 0.001
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "scheduler": "none",
+    "training_data": "standard/unshifted training representations only",
+    "evaluation": "the same trained probe is evaluated on standard and shifted test representations"
   },
-
-  "primary_metric": "linear-probe accuracy degradation",
-
+  "primary_metric": {
+    "accuracy_drop": "accuracy_standard - accuracy_shifted",
+    "D_seed": "accuracy_drop_AE - accuracy_drop_JEPA",
+    "reports": ["mean D", "standard deviation of D", "95% paired confidence interval"]
+  },
   "decision_rule": {
     "minimum_mean_advantage": 0.05,
-    "confidence_level": 0.95
+    "require_ci_excludes_zero": true
   },
-
-  "models": [
-    "autoencoder",
-    "jepa"
-  ]
+  "analysis": {
+    "confidence_level": 0.95,
+    "ci_method": "paired t-based confidence interval over five D_seed values",
+    "t_critical_df_4": 2.7764451051977987
+  },
+  "secondary_metrics": [
+    "effective_rank",
+    "feature_variance",
+    "avg_pairwise_cosine_sim"
+  ],
+  "models": ["autoencoder", "jepa"],
+  "result_structure": {
+    "per_seed": "seed_<seed>/metrics.json",
+    "aggregate": "aggregate.json",
+    "paired_summary": "paired_summary.json"
+  }
 }
