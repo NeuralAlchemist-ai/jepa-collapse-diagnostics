@@ -24,65 +24,12 @@ METRICS = (
 	"effective_rank",
 	"avg_pairwise_cosine_sim",
 )
-DISTRIBUTION_SHIFT_PROTOCOL = {
-	"protocol_version": "distribution_shift_v1",
-	"experiment_name": "distribution_shift_v1",
-	"dataset": "MNIST",
-	"train_samples": PROTOCOL_TRAIN_SAMPLES,
-	"test_samples": PROTOCOL_TEST_SAMPLES,
-	"seeds": list(PROTOCOL_SEEDS),
-	"batch_size": BATCH_SIZE,
-	"optimizer": "Adam",
-	"learning_rate": 1e-3,
-	"weight_decay": 0.0,
-	"epochs": EPOCHS,
-	"scheduler": "none",
-	"probe_config": {
-		"input_dimension": 64,
-		"output_dimension": 10,
-		"optimizer": "Adam",
-		"learning_rate": 1e-3,
-		"epochs": PROBE_EPOCHS,
-		"weight_decay": 0.0,
-		"scheduler": "none",
-	},
-	"preprocessing": {
-		"to_tensor": True,
-		"normalize_mean": 0.5,
-		"normalize_std": 0.5,
-	},
-	"shift_type": "translation",
-	"shift_parameters": {
-		"x_displacement": {"min": -2, "max": 2},
-		"y_displacement": {"min": -2, "max": 2},
-		"interpolation": "bilinear",
-		"fill_value": 0,
-		"bounds": list(PROTOCOL_SHIFT_BOUNDS),
-		"generation_seed": PROTOCOL_SHIFT_SEED,
-	},
-	"primary_metric": "accuracy_drop = accuracy_standard - accuracy_shifted",
-	"secondary_metrics": [
-		"centered_effective_rank",
-		"feature_variance",
-		"avg_pairwise_cosine_similarity",
-	],
-	"decision_rule": {
-		"threshold": 0.05,
-		"criterion": "mean(D) > 0.05 and 95% paired confidence interval excludes 0",
-	},
-	"training_condition": "standard_train_only",
-	"matched_augmentation_condition": {
-		"available": True,
-		"default": False,
-		"requires_explicit_selection": True,
-	},
-	"output_artifacts": [
-		"aggregate.json",
-		"paired_summary.json",
-		"seed_<seed>/metrics.json",
-	],
-	"status": "pre_outcome_protocol_not_executed",
-}
+
+
+def load_distribution_shift_protocol() -> dict:
+	protocol_path = Path(__file__).resolve().parent / "protocols" / "distribution_shift_v1.json"
+	with protocol_path.open("r", encoding="utf-8") as file:
+		return json.load(file)
 
 
 def train_autoencoder(model, loader, device, epochs, learning_rate):
@@ -222,7 +169,8 @@ def main() -> None:
 	)
 	args = parser.parse_args()
 	if args.protocol == "distribution_shift_v1":
-		print(json.dumps(DISTRIBUTION_SHIFT_PROTOCOL, indent=2))
+		protocol = load_distribution_shift_protocol()
+		print(json.dumps(protocol, indent=2))
 		print("Distribution-shift protocol is frozen and intentionally not executed in this repository state.")
 		return
 	base_name = datetime.now(timezone.utc).strftime("closure_%Y%m%d_%H%M%S_%fZ")
