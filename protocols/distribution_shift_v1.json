@@ -1,0 +1,42 @@
+{
+  "experiment": "controlled_distribution_shift",
+  "dataset": "MNIST",
+  "train_indices": "splits/train_indices.json",
+  "test_indices": "splits/test_indices.json",
+  "train_size": 10000,
+  "test_size": 2000,
+
+  "shift": {
+    "type": "translation",
+    "x_pixels": [-2, 2],
+    "y_pixels": [-2, 2],
+    "interpolation": "bilinear",
+    "fill": 0,
+    "shift_seed": 12345
+  },
+
+  "seeds": [42, 100, 2026, 3141, 404],
+
+  "training": {
+    "epochs": 3,
+    "batch_size": 128,
+    "learning_rate": 0.001
+  },
+
+  "probe": {
+    "epochs": 2,
+    "learning_rate": 0.001
+  },
+
+  "primary_metric": "linear-probe accuracy degradation",
+
+  "decision_rule": {
+    "minimum_mean_advantage": 0.05,
+    "confidence_level": 0.95
+  },
+
+  "models": [
+    "autoencoder",
+    "jepa"
+  ]
+}

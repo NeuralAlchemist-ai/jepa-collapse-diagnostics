@@ -31,6 +31,22 @@ uv sync
 
 The first run downloads MNIST into `data/` through torchvision.
 
+## Frozen closure experiment
+
+The historical closure experiment remains frozen and unchanged; its retained
+results are associated with the earlier closure run and are kept in
+`results/closure_20260914_094423_899940Z/`.
+
+## Distribution-shift protocol v1
+
+A new protocol, `distribution_shift_v1`, is prepared for review. It is a
+pre-outcome evaluation protocol for a controlled MNIST translation-shift study,
+using the same five seeds and the same 10,000/2,000 train/test budgets as the
+closure experiment while keeping the model architectures unchanged.
+
+This protocol has not been executed yet and is not generating experimental
+results in the repository state.
+
 ## Run
 
 ```bash
@@ -41,6 +57,12 @@ With `uv`:
 
 ```bash
 uv run python run_experiment.py
+```
+
+To inspect the frozen distribution-shift metadata without executing the protocol:
+
+```bash
+python run_experiment.py --protocol distribution_shift_v1
 ```
 
 The default closure run freezes seeds `42`, `100`, `2026`, `3141`, and `404`.

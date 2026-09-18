@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 from torch import nn
 
-from src.data import get_mnist_loaders, split_context_target
+from src.data import PROTOCOL_SEEDS, PROTOCOL_SHIFT_BOUNDS, PROTOCOL_SHIFT_SEED, PROTOCOL_TEST_SAMPLES, PROTOCOL_TRAIN_SAMPLES, get_mnist_loaders, split_context_target
 from src.evaluate import evaluate_linear_probe
 from src.models import AutoEncoder, CollapsedControl, JEPA
 
@@ -24,6 +24,65 @@ METRICS = (
 	"effective_rank",
 	"avg_pairwise_cosine_sim",
 )
+DISTRIBUTION_SHIFT_PROTOCOL = {
+	"protocol_version": "distribution_shift_v1",
+	"experiment_name": "distribution_shift_v1",
+	"dataset": "MNIST",
+	"train_samples": PROTOCOL_TRAIN_SAMPLES,
+	"test_samples": PROTOCOL_TEST_SAMPLES,
+	"seeds": list(PROTOCOL_SEEDS),
+	"batch_size": BATCH_SIZE,
+	"optimizer": "Adam",
+	"learning_rate": 1e-3,
+	"weight_decay": 0.0,
+	"epochs": EPOCHS,
+	"scheduler": "none",
+	"probe_config": {
+		"input_dimension": 64,
+		"output_dimension": 10,
+		"optimizer": "Adam",
+		"learning_rate": 1e-3,
+		"epochs": PROBE_EPOCHS,
+		"weight_decay": 0.0,
+		"scheduler": "none",
+	},
+	"preprocessing": {
+		"to_tensor": True,
+		"normalize_mean": 0.5,
+		"normalize_std": 0.5,
+	},
+	"shift_type": "translation",
+	"shift_parameters": {
+		"x_displacement": {"min": -2, "max": 2},
+		"y_displacement": {"min": -2, "max": 2},
+		"interpolation": "bilinear",
+		"fill_value": 0,
+		"bounds": list(PROTOCOL_SHIFT_BOUNDS),
+		"generation_seed": PROTOCOL_SHIFT_SEED,
+	},
+	"primary_metric": "accuracy_drop = accuracy_standard - accuracy_shifted",
+	"secondary_metrics": [
+		"centered_effective_rank",
+		"feature_variance",
+		"avg_pairwise_cosine_similarity",
+	],
+	"decision_rule": {
+		"threshold": 0.05,
+		"criterion": "mean(D) > 0.05 and 95% paired confidence interval excludes 0",
+	},
+	"training_condition": "standard_train_only",
+	"matched_augmentation_condition": {
+		"available": True,
+		"default": False,
+		"requires_explicit_selection": True,
+	},
+	"output_artifacts": [
+		"aggregate.json",
+		"paired_summary.json",
+		"seed_<seed>/metrics.json",
+	],
+	"status": "pre_outcome_protocol_not_executed",
+}
 
 
 def train_autoencoder(model, loader, device, epochs, learning_rate):
@@ -155,7 +214,17 @@ def summarize(reports: list[dict]) -> dict:
 
 def main() -> None:
 	parser = argparse.ArgumentParser(description=__doc__)
-	parser.parse_args()
+	parser.add_argument(
+		"--protocol",
+		choices=("closure", "distribution_shift_v1"),
+		default="closure",
+		help="Which experiment protocol to configure. The distribution-shift protocol is frozen but intentionally not executed here.",
+	)
+	args = parser.parse_args()
+	if args.protocol == "distribution_shift_v1":
+		print(json.dumps(DISTRIBUTION_SHIFT_PROTOCOL, indent=2))
+		print("Distribution-shift protocol is frozen and intentionally not executed in this repository state.")
+		return
 	base_name = datetime.now(timezone.utc).strftime("closure_%Y%m%d_%H%M%S_%fZ")
 	closure_dir = Path("results") / base_name
 	closure_dir.mkdir(parents=True)
