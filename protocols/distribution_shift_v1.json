@@ -64,6 +64,8 @@
     "reports": ["mean D", "standard deviation of D", "95% paired confidence interval"]
   },
   "decision_rule": {
+    "applies_to": "standard_unshifted",
+    "matched_augmentation_role": "secondary_descriptive_only; no separate primary robustness claim",
     "minimum_mean_advantage": 0.05,
     "require_ci_excludes_zero": true
   },

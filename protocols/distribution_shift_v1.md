@@ -142,7 +142,7 @@ The augmentation policy is frozen before any result-bearing run. The training
 translation seed is exactly `12345 + model_seed`; this does not alter the test
 shift, whose seed remains `12345`.
 
-The primary conclusion must distinguish robustness observed without augmentation from robustness observed after matched augmentation.
+The primary conclusion must distinguish robustness observed without augmentation from robustness observed after matched augmentation. The matched-augmentation condition is secondary and descriptive; it does not trigger a separate primary robustness claim.
 
 ## 8. Linear Probe
 
@@ -204,6 +204,10 @@ The five seeds are treated as paired observations because JEPA and the autoencod
 ## 10. Frozen Decision Rule
 
 Before inspecting any distribution-shift results, the following decision rule is fixed:
+
+The frozen decision rule applies only to the primary `standard_unshifted`
+condition. The matched-augmentation condition is secondary and descriptive; it
+does not trigger a separate primary robustness claim.
 
 JEPA will be described as showing **greater robustness under this protocol** only if:
 
