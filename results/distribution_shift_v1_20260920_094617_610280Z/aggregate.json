@@ -1,0 +1,33 @@
+{
+  "protocol": "distribution_shift_v1",
+  "protocol_sha256": "dd1e914a551c21e4ca847f23e5413337edc7780a96cededbc669aa8bf5abf86b",
+  "reproduction_command": "python run_experiment.py --protocol distribution_shift_v1",
+  "training_condition": "standard_unshifted",
+  "seeds": [
+    42,
+    100,
+    2026,
+    3141,
+    404
+  ],
+  "models": {
+    "autoencoder": {
+      "standard_accuracy_mean": 0.6312,
+      "standard_accuracy_std": 0.011893,
+      "shifted_accuracy_mean": 0.4312,
+      "shifted_accuracy_std": 0.011361,
+      "accuracy_drop_mean": 0.2,
+      "accuracy_drop_std": 0.011979
+    },
+    "jepa": {
+      "standard_accuracy_mean": 0.375,
+      "standard_accuracy_std": 0.072137,
+      "shifted_accuracy_mean": 0.2815,
+      "shifted_accuracy_std": 0.043812,
+      "accuracy_drop_mean": 0.0935,
+      "accuracy_drop_std": 0.029172
+    }
+  },
+  "D_seed_mean": 0.1065,
+  "D_seed_std": 0.02157
+}

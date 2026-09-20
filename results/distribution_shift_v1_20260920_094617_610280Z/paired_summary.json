@@ -1,0 +1,38 @@
+{
+  "D_seed": [
+    {
+      "seed": 42,
+      "value": 0.11
+    },
+    {
+      "seed": 100,
+      "value": 0.0865
+    },
+    {
+      "seed": 2026,
+      "value": 0.11
+    },
+    {
+      "seed": 3141,
+      "value": 0.087
+    },
+    {
+      "seed": 404,
+      "value": 0.139
+    }
+  ],
+  "mean": 0.1065,
+  "std": 0.02157,
+  "confidence_level": 0.95,
+  "ci_method": "paired t-based confidence interval over five D_seed values",
+  "ci": [
+    0.079718,
+    0.133282
+  ],
+  "decision_rule": {
+    "applies_to": "standard_unshifted",
+    "matched_augmentation_role": "secondary_descriptive_only; no separate primary robustness claim",
+    "minimum_mean_advantage": 0.05,
+    "require_ci_excludes_zero": true
+  }
+}

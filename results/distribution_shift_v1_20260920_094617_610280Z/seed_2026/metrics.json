@@ -1,0 +1,78 @@
+{
+  "seed": 2026,
+  "protocol": "distribution_shift_v1",
+  "protocol_sha256": "dd1e914a551c21e4ca847f23e5413337edc7780a96cededbc669aa8bf5abf86b",
+  "device": "cuda",
+  "training_condition": "standard_unshifted",
+  "training_config": {
+    "epochs": 3,
+    "batch_size": 128,
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "scheduler": "none",
+    "augmentation": "none for primary condition"
+  },
+  "probe_config": {
+    "latent_dim": 64,
+    "output_classes": 10,
+    "epochs": 2,
+    "optimizer": "Adam",
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "scheduler": "none",
+    "training_data": "standard/unshifted training representations only",
+    "evaluation": "the same trained probe is evaluated on standard and shifted test representations"
+  },
+  "shift_config": {
+    "type": "bounded_translation",
+    "dx_range": [
+      -2,
+      2
+    ],
+    "dy_range": [
+      -2,
+      2
+    ],
+    "offset_type": "independent integer draws",
+    "interpolation": "bilinear",
+    "fill": 0.0,
+    "fill_space": "raw [0, 1] image space",
+    "translation_seed": 12345
+  },
+  "autoencoder": {
+    "model": "autoencoder",
+    "parameter_count": 98254,
+    "standard_accuracy": 0.6285,
+    "shifted_accuracy": 0.421,
+    "accuracy_drop": 0.2075,
+    "standard_diagnostics": {
+      "feature_variance": 0.454653,
+      "effective_rank": 23.688574,
+      "avg_pairwise_cosine_sim": 0.820762
+    },
+    "shifted_diagnostics": {
+      "feature_variance": 0.455892,
+      "effective_rank": 24.549335,
+      "avg_pairwise_cosine_sim": 0.813051
+    }
+  },
+  "jepa": {
+    "model": "jepa",
+    "parameter_count": 97956,
+    "standard_accuracy": 0.3935,
+    "shifted_accuracy": 0.296,
+    "accuracy_drop": 0.0975,
+    "standard_diagnostics": {
+      "feature_variance": 0.083297,
+      "effective_rank": 27.145256,
+      "avg_pairwise_cosine_sim": 0.979904
+    },
+    "shifted_diagnostics": {
+      "feature_variance": 0.097866,
+      "effective_rank": 26.8253,
+      "avg_pairwise_cosine_sim": 0.978402
+    }
+  },
+  "D_seed": 0.11
+}
